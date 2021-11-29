@@ -115,6 +115,11 @@ isIgnoredCFlag flag = flag `elem` ignoredCFlags || isIncludeFlag flag || isWarni
 isIgnoredCxxFlag :: String -> Bool
 isIgnoredCxxFlag flag = flag `elem` ignoredCxxFlags || isIncludeFlag flag || isWarningFlag flag
 
+putProgramFilesPartsBackTogether :: [String] -> [String]
+putProgramFilesPartsBackTogether libs =
+  let groupped = groupBy (\before after -> ("Program" `isSuffixOf` before) && ("Files" `isPrefixOf` after)) libs
+  in  unwords <$> groupped
+
 main :: IO ()
 main = do
   let origUserHooks = simpleUserHooks
@@ -134,7 +139,7 @@ main = do
       includeDirs <- liftM lines $ llvmConfig ["--includedir"]
       libDirs <- liftM lines $ llvmConfig ["--libdir"]
       [llvmVersion] <- liftM lines $ llvmConfig ["--version"]
-      let getLibs = liftM (map (\libName -> fromMaybe libName $ stripPrefix "-l" libName) . words) . llvmConfig
+      let getLibs = liftM (map (\libName -> fromMaybe libName $ stripPrefix "-l" libName) . putProgramFilesPartsBackTogether . words) . llvmConfig
           flags    = configConfigurationsFlags confFlags
           linkFlag = case lookupFlagAssignment (mkFlagName "shared-llvm") flags of
                        Nothing     -> "--link-shared"
