@@ -103,13 +103,15 @@ replaceLeadingSlashWithDash option = case option of
   or ->
     or
 
+-- -Ic:\Program Files\LLVM\include    /EHs-c- /GR- -D_CRT_SECURE_NO_DEPRECATE -D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE -D_CRT_NONSTDC_NO_WARNINGS -D_SCL_SECURE_NO_DEPRECATE -D_SCL_SECURE_NO_WARNINGS -DUNICODE -D_UNICODE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
+
 -- | These flags are not relevant for us and dropping them allows
 -- linking against LLVM build with Clang using GCC
 ignoredCxxFlags :: [String]
-ignoredCxxFlags = ["-fcolor-diagnostics"] ++ map ("-D" ++) uncheckedHsFFIDefines
+ignoredCxxFlags = ["-fcolor-diagnostics", "/EHs-c-", "/GR-"] ++ map ("-D" ++) uncheckedHsFFIDefines
 
 ignoredCFlags :: [String]
-ignoredCFlags = ["-fcolor-diagnostics"]
+ignoredCFlags = ["-fcolor-diagnostics", "/EHs-c-", "/GR-"]
 
 -- | Header directories are added separately to configExtraIncludeDirs
 isIncludeFlag :: String -> Bool
@@ -127,7 +129,7 @@ isIgnoredCxxFlag flag = flag `elem` ignoredCxxFlags || isIncludeFlag flag || isW
 sanitizeCFlags :: [String] -> [String]
 sanitizeCFlags libs =
   let groupped     = groupBy (\before after -> ("Program" `isSuffixOf` before) && ("Files" `isPrefixOf` after)) libs
-  in  replaceLeadingSlashWithDash . unwords <$> groupped
+  in  unwords <$> groupped
 
 putProgramFilesPartsBackTogether :: [String] -> [String]
 putProgramFilesPartsBackTogether libs =
