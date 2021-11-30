@@ -95,6 +95,14 @@ addLLVMToLdLibraryPath confFlags = do
   [libDir] <- liftM lines $ llvmConfig ["--libdir"]
   addToLdLibraryPath libDir
 
+replaceLeadingSlashWithDash :: String -> String
+replaceLeadingSlashWithDash option = case option of
+  '/':rest ->
+    '-':rest
+
+  or ->
+    or
+
 -- | These flags are not relevant for us and dropping them allows
 -- linking against LLVM build with Clang using GCC
 ignoredCxxFlags :: [String]
@@ -119,7 +127,7 @@ isIgnoredCxxFlag flag = flag `elem` ignoredCxxFlags || isIncludeFlag flag || isW
 sanitizeCFlags :: [String] -> [String]
 sanitizeCFlags libs =
   let groupped     = groupBy (\before after -> ("Program" `isSuffixOf` before) && ("Files" `isPrefixOf` after)) libs
-  in  unwords <$> groupped
+  in  replaceLeadingSlashWithDash . unwords <$> groupped
 
 putProgramFilesPartsBackTogether :: [String] -> [String]
 putProgramFilesPartsBackTogether libs =
