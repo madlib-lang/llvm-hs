@@ -46,6 +46,7 @@ import qualified LLVM.AST.Operand as A
 import qualified LLVM.AST.Constant as A (Constant(Int, integerBits, integerValue))
 
 import LLVM.Internal.FFI.LLVMCTypes (mdSubclassIdP)
+import qualified LLVM.AST.Operand as A
 
 genCodingInstance [t|A.DebugEmissionKind|] ''FFI.DebugEmissionKind
   [ (FFI.NoDebug, A.NoDebug)
@@ -453,6 +454,8 @@ instance DecodeM DecodeAST A.DICompileUnit (Ptr FFI.DICompileUnit) where
     debugInfoForProfiling <- decodeM =<< liftIO (FFI.getDICompileUnitDebugInfoForProfiling p)
     enums <- decodeM =<< liftIO (FFI.getDICompileUnitEnumTypes p)
     retainedTypes' <- decodeM =<< liftIO (FFI.getDICompileUnitRetainedTypes p)
+    sysRoot <- decodeM =<< liftIO (FFI.getDICompileUnitSysRoot p)
+    sdk <- decodeM =<< liftIO (FFI.getDICompileUnitSDK p)
     let toRetainedType :: A.MDRef A.DIScope -> DecodeAST (A.MDRef (Either A.DIType A.DISubprogram))
         toRetainedType (A.MDRef i) = pure (A.MDRef i)
         toRetainedType (A.MDInline (A.DIType ty)) = pure (A.MDInline (Left ty))
@@ -483,6 +486,8 @@ instance DecodeM DecodeAST A.DICompileUnit (Ptr FFI.DICompileUnit) where
       , A.debugInfoForProfiling = debugInfoForProfiling
       , A.nameTableKind = nameTableKind
       , A.rangesBaseAddress = rangesBaseAddress
+      , A.sysRoot = sysRoot
+      , A.sdk = sdk
       }
 
 instance EncodeM EncodeAST A.DICompileUnit (Ptr FFI.DICompileUnit) where
@@ -505,13 +510,15 @@ instance EncodeM EncodeAST A.DICompileUnit (Ptr FFI.DICompileUnit) where
     debugInfoForProfiling <- encodeM debugInfoForProfiling
     nameTableKind <- encodeM nameTableKind
     rangesBaseAddress <- encodeM rangesBaseAddress
+    sysRoot <- encodeM sysRoot
+    sdk <- encodeM sdk
     Context c <- gets encodeStateContext
     liftIO $ FFI.getDICompileUnit
       c
       language file producer optimized flags
       runtimeVersion debugFileName emissionKind enums retainedTypes
       globals imports macros dwoid splitDebugInlining
-      debugInfoForProfiling nameTableKind rangesBaseAddress
+      debugInfoForProfiling nameTableKind rangesBaseAddress sysRoot sdk
 
 instance EncodeM EncodeAST A.DIScope (Ptr FFI.DIScope) where
   encodeM (A.DIFile f) = FFI.upCast <$> (encodeM f :: EncodeAST (Ptr FFI.DIFile))

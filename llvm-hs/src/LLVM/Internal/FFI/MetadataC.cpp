@@ -720,6 +720,14 @@ MDString* LLVM_Hs_DICompileUnit_GetProducer(DICompileUnit* cu) {
     return cu->getRawProducer();
 }
 
+MDString* LLVM_Hs_DICompileUnit_GetSysRoot(DICompileUnit* cu) {
+    return cu->getRawSysRoot();
+}
+
+MDString* LLVM_Hs_DICompileUnit_GetSDK(DICompileUnit* cu) {
+    return cu->getRawSDK();
+}
+
 MDString* LLVM_Hs_DICompileUnit_GetFlags(DICompileUnit* cu) {
     return cu->getRawFlags();
 }

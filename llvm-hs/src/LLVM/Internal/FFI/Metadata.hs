@@ -432,7 +432,7 @@ foreign import ccall unsafe "LLVM_Hs_DIVariable_GetAlignInBits" getDIVariableAli
 
 foreign import ccall unsafe "LLVM_Hs_Get_DILocalVariable" getDILocalVariable ::
   Ptr Context ->
-  Ptr DIScope -> CString -> Ptr DIFile -> Word32 -> Ptr DIType -> Word16 -> DIFlags -> Word32 ->
+  Ptr DIScope -> Ptr MDString -> Ptr DIFile -> Word32 -> Ptr DIType -> Word16 -> DIFlags -> Word32 ->
   IO (Ptr DILocalVariable)
 
 foreign import ccall unsafe "LLVM_Hs_DILocalVariable_GetArg" getDILocalVariableArg ::
@@ -474,6 +474,7 @@ foreign import ccall unsafe "LLVM_Hs_Get_DICompileUnit" getDICompileUnit ::
   TupleArray DIGlobalVariableExpression -> TupleArray DIImportedEntity -> TupleArray DIMacroNode ->
   Word64 -> LLVMBool ->
   LLVMBool -> DebugNameTableKind -> LLVMBool ->
+  Ptr MDString -> Ptr MDString ->
   IO (Ptr DICompileUnit)
 
 foreign import ccall unsafe "LLVM_Hs_DICompileUnit_GetLanguage" getDICompileUnitLanguage ::
@@ -492,6 +493,12 @@ foreign import ccall unsafe "LLVM_Hs_DICompileUnit_GetRuntimeVersion" getDICompi
   Ptr DICompileUnit -> IO CUInt
 
 foreign import ccall unsafe "LLVM_Hs_DICompileUnit_GetProducer" getDICompileUnitProducer ::
+  Ptr DICompileUnit -> IO (Ptr MDString)
+
+foreign import ccall unsafe "LLVM_Hs_DICompileUnit_GetSysRoot" getDICompileUnitSysRoot ::
+  Ptr DICompileUnit -> IO (Ptr MDString)
+
+foreign import ccall unsafe "LLVM_Hs_DICompileUnit_GetSDK" getDICompileUnitSDK ::
   Ptr DICompileUnit -> IO (Ptr MDString)
 
 foreign import ccall unsafe "LLVM_Hs_DICompileUnit_GetFlags" getDICompileUnitFlags ::
