@@ -13,6 +13,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Setup hiding (Flag)
 import Distribution.System
 import System.Environment
+import qualified System.FilePath as SystemFilePath
 
 #ifdef MIN_VERSION_Cabal
 #if MIN_VERSION_Cabal(2,0,0)
@@ -94,13 +95,23 @@ addLLVMToLdLibraryPath confFlags = do
   [libDir] <- liftM lines $ llvmConfig ["--libdir"]
   addToLdLibraryPath libDir
 
+replaceLeadingSlashWithDash :: String -> String
+replaceLeadingSlashWithDash option = case option of
+  '/':rest ->
+    '-':rest
+
+  or ->
+    or
+
+-- -Ic:\Program Files\LLVM\include    /EHs-c- /GR- -D_CRT_SECURE_NO_DEPRECATE -D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE -D_CRT_NONSTDC_NO_WARNINGS -D_SCL_SECURE_NO_DEPRECATE -D_SCL_SECURE_NO_WARNINGS -DUNICODE -D_UNICODE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
+
 -- | These flags are not relevant for us and dropping them allows
 -- linking against LLVM build with Clang using GCC
 ignoredCxxFlags :: [String]
-ignoredCxxFlags = ["-fcolor-diagnostics"] ++ map ("-D" ++) uncheckedHsFFIDefines
+ignoredCxxFlags = ["-fcolor-diagnostics", "/EHs-c-", "/GR-"] ++ map ("-D" ++) uncheckedHsFFIDefines
 
 ignoredCFlags :: [String]
-ignoredCFlags = ["-fcolor-diagnostics"]
+ignoredCFlags = ["-fcolor-diagnostics", "/EHs-c-", "/GR-"]
 
 -- | Header directories are added separately to configExtraIncludeDirs
 isIncludeFlag :: String -> Bool
@@ -115,6 +126,17 @@ isIgnoredCFlag flag = flag `elem` ignoredCFlags || isIncludeFlag flag || isWarni
 isIgnoredCxxFlag :: String -> Bool
 isIgnoredCxxFlag flag = flag `elem` ignoredCxxFlags || isIncludeFlag flag || isWarningFlag flag
 
+sanitizeCFlags :: [String] -> [String]
+sanitizeCFlags libs =
+  let groupped     = groupBy (\before after -> ("Program" `isSuffixOf` before) && ("Files" `isPrefixOf` after)) libs
+  in  unwords <$> groupped
+
+putProgramFilesPartsBackTogether :: [String] -> [String]
+putProgramFilesPartsBackTogether libs =
+  let groupped     = groupBy (\before after -> ("Program" `isSuffixOf` before) && ("Files" `isPrefixOf` after)) libs
+      backTogether = unwords <$> groupped
+  in  SystemFilePath.takeBaseName <$> backTogether
+
 main :: IO ()
 main = do
   let origUserHooks = simpleUserHooks
@@ -123,18 +145,18 @@ main = do
     hookedPrograms = [ llvmProgram ],
 
     confHook = \(genericPackageDescription, hookedBuildInfo) confFlags -> do
-      llvmConfig <- getLLVMConfig confFlags
-      llvmCxxFlags <- do
+      llvmConfig        <- getLLVMConfig confFlags
+      llvmCxxFlags      <- do
         rawLlvmCxxFlags <- llvmConfig ["--cxxflags"]
-        return . filter (not . isIgnoredCxxFlag) $ words rawLlvmCxxFlags
+        return . filter (not . isIgnoredCxxFlag) . sanitizeCFlags $ words rawLlvmCxxFlags
       let stdLib = maybe "stdc++"
                          (drop (length stdlibPrefix))
                          (find (isPrefixOf stdlibPrefix) llvmCxxFlags)
             where stdlibPrefix = "-stdlib=lib"
-      includeDirs <- liftM lines $ llvmConfig ["--includedir"]
-      libDirs <- liftM lines $ llvmConfig ["--libdir"]
+      includeDirs   <- liftM lines $ llvmConfig ["--includedir"]
+      libDirs       <- liftM lines $ llvmConfig ["--libdir"]
       [llvmVersion] <- liftM lines $ llvmConfig ["--version"]
-      let getLibs = liftM (map (\libName -> fromMaybe libName $ stripPrefix "-l" libName) . words) . llvmConfig
+      let getLibs  = liftM (map (\libName -> fromMaybe libName $ stripPrefix "-l" libName) . putProgramFilesPartsBackTogether . words) . llvmConfig
           flags    = configConfigurationsFlags confFlags
           linkFlag = case lookupFlagAssignment (mkFlagName "shared-llvm") flags of
                        Nothing     -> "--link-shared"
@@ -175,7 +197,7 @@ main = do
                       llvmConfig <- getLLVMConfig (configFlags localBuildInfo)
                       llvmCFlags <- do
                           rawLlvmCFlags <- llvmConfig ["--cflags"]
-                          return . filter (not . isIgnoredCFlag) $ words rawLlvmCFlags
+                          return . filter (not . isIgnoredCFlag) . sanitizeCFlags $ words rawLlvmCFlags
                       let buildInfo' = buildInfo { ccOptions = "-Wno-variadic-macros" : llvmCFlags }
                       runPreProcessor (origHsc buildInfo') inFiles outFiles verbosity
               }
